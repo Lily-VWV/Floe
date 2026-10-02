@@ -28,6 +28,7 @@ internal static class Verification
         OverlayWindow? overlay = null;
         OverlayWindow? controlledClock = null;
         var passed = true;
+        var complete = true;
         void Check(string name, bool value)
         {
             results.Add(new { name, passed = value });
@@ -142,10 +143,18 @@ internal static class Verification
             Check("Hue slider selects green", colorBox.Text == "#00FF00");
             hue.Value = 240;
             Check("Hue slider selects blue", colorBox.Text == "#0000FF");
-            await DragPaletteAsync(palette);
-            var draggedColor = picker.SelectedColor;
-            Check("Mouse drag changes color and keeps palette open", colorPopup.IsOpen && !palette.IsMouseCaptured &&
-                draggedColor.R is >= 40 and <= 42 && draggedColor.G is >= 40 and <= 42 && draggedColor.B is >= 203 and <= 205);
+            if (await DragPaletteAsync(palette))
+            {
+                var draggedColor = picker.SelectedColor;
+                Check("Mouse drag changes color and keeps palette open", colorPopup.IsOpen && !palette.IsMouseCaptured &&
+                    draggedColor.R is >= 40 and <= 42 && draggedColor.G is >= 40 and <= 42 && draggedColor.B is >= 203 and <= 205);
+            }
+            else
+            {
+                complete = false;
+                results.Add(new { name = "Mouse drag changes color and keeps palette open", skipped = true,
+                    reason = "Windows rejected SetCursorPos; pointer dragging is unavailable in this session." });
+            }
             picker.SelectAt(new Point(palette.ActualWidth / 2, palette.ActualHeight / 2));
             Check("Palette selects a known saturation and brightness", colorBox.Text == "#404080");
             picker.SelectAt(new Point(-10, -10));
@@ -404,7 +413,7 @@ internal static class Verification
         {
             controlledClock?.Dismiss();
             controlledClock?.Close();
-            try { File.WriteAllText(Path.Combine(directory, "report.json"), JsonSerializer.Serialize(new { passed, results }, new JsonSerializerOptions { WriteIndented = true })); }
+            try { File.WriteAllText(Path.Combine(directory, "report.json"), JsonSerializer.Serialize(new { passed, complete, results }, new JsonSerializerOptions { WriteIndented = true })); }
             catch { passed = false; }
             app.Shutdown(passed ? 0 : 1);
         }
@@ -413,7 +422,11 @@ internal static class Verification
     [DllImport("user32.dll")]
     private static extern void mouse_event(uint flags, uint x, uint y, uint data, UIntPtr extraInfo);
 
-    private static async Task DragPaletteAsync(FrameworkElement palette)
+    [DllImport("user32.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SetCursorPos(int x, int y);
+
+    private static async Task<bool> DragPaletteAsync(FrameworkElement palette)
     {
         var original = Forms.Cursor.Position;
         var start = palette.PointToScreen(new Point(palette.ActualWidth * 0.25, palette.ActualHeight * 0.25));
@@ -423,7 +436,7 @@ internal static class Verification
             throw new InvalidOperationException("Palette is covered; pointer check cannot safely run");
         try
         {
-            Forms.Cursor.Position = new System.Drawing.Point(startPoint.X, startPoint.Y);
+            if (!SetCursorPos(startPoint.X, startPoint.Y)) return false;
             mouse_event(0x1, 0, 0, 0, UIntPtr.Zero);
             var expectedStart = new Point(palette.ActualWidth * 0.25, palette.ActualHeight * 0.25);
             await WaitForAsync(() => (Mouse.GetPosition(palette) - expectedStart).Length < 2);
@@ -438,6 +451,7 @@ internal static class Verification
             await WaitForAsync(() => (Mouse.GetPosition(palette) - new Point(palette.ActualWidth * 0.8, palette.ActualHeight * 0.2)).Length < 2);
             mouse_event(0x4, 0, 0, 0, UIntPtr.Zero);
             await WaitForAsync(() => !palette.IsMouseCaptured);
+            return true;
         }
         finally
         {

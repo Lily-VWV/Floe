@@ -97,6 +97,8 @@ pwsh -NoProfile -File ./verify.ps1 -Package build
 
 The desktop check opens test windows, briefly moves the mouse to verify palette dragging, and restores its position. It uses isolated settings and does not change normal user settings or startup registration. Lock and suspend checks simulate application states. Reports and screenshots are written to `artifacts/verification*`.
 
+If Windows rejects programmatic cursor movement, the report marks the drag check as skipped and `complete` as `false`, while continuing the remaining checks. Review skipped entries as well as `passed` before treating a run as fully verified.
+
 Checks cover scheduling, configuration recovery, language persistence and switching, localized tray and validation text, color selection, font size, previews, transparency, placement, click-through behavior, blinking, automatic hiding, and persistent-clock transitions.
 
 ## Project layout
