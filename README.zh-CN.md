@@ -8,7 +8,16 @@ Windows 桌面托盘工具。在指定时刻显示半透明数字，也可让时
 
 ## 使用
 
-要求 Windows x64，可按下文说明从源码构建。普通版 `artifacts/app/TimeOnScreen.exe` 需要 .NET 10 桌面运行环境，须保留同目录其他文件。另有自带运行环境的单文件 `artifacts/standalone/TimeOnScreen.exe`，可单独复制到其他 Windows x64 电脑。单文件较大，首次运行会自动解压运行组件。构建输出包含程序和两份使用说明；发布程序不纳入源码版本管理。
+要求 Windows x64。在 [v0.7.1 发布页](https://github.com/Lily-VWV/Floe/releases/tag/v0.7.1) 下载以下任一 ZIP，解压后运行文件夹中的 `TimeOnScreen.exe`：
+
+| 下载 | 运行要求 |
+| --- | --- |
+| [普通版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64.zip) | 需要 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)，保留全部解压文件 |
+| [自带运行环境版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64-standalone.zip) | 无需另外安装 .NET，解压即用 |
+
+两个包均附中英文说明、MIT 许可证及所包含 .NET 组件的许可声明。发布页的 `SHA256SUMS.txt` 提供校验值。自动生成的 **Source code** 下载项是源码，须编译后才能运行。
+
+源码构建方式见下文。普通版输出至 `artifacts/app/`，独立运行版输出至 `artifacts/standalone/`。独立版的可执行文件包含运行组件，首次运行会自动解压；再次分发时请保留许可文件和声明。发布程序不纳入源码版本管理。
 
 1. 点击 **预览**，用当前表单设置播放效果；预览不会保存修改。
 2. 调整显示、提醒和外观，再点击 **保存**。显示器、位置、偏移与开机启动在 **更多设置** 中。
@@ -68,3 +77,9 @@ pwsh -NoProfile -File ./verify.ps1 -Package build
 - `tests/TimeOnScreen.Tests`：无外部依赖的逻辑回归检查。
 
 窗口实现参考：[WPF 窗口](https://learn.microsoft.com/zh-cn/dotnet/desktop/wpf/windows/)、[透明分层窗口](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features)。
+
+## 许可证
+
+Floe 使用 [MIT 许可证](LICENSE)，版权声明为 `Copyright (c) 2026 Lily Ren`。
+
+所包含的 .NET 组件保留各自的许可证和声明，见 `licenses/`。

@@ -10,6 +10,8 @@
     <Version>0.7.1</Version>
     <AssemblyTitle>Floe</AssemblyTitle>
     <Product>Floe</Product>
+    <Copyright>Copyright (c) 2026 Lily Ren</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>A transparent desktop clock with custom reminders for Windows</Description>
   </PropertyGroup>
   <ItemGroup>

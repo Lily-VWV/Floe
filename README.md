@@ -18,14 +18,23 @@ Simplified Chinese is the default language. English is available from the langua
 
 ## Run
 
-Requires Windows x64. Build from source with the instructions below. Local release outputs are:
+Requires Windows x64. Download [Floe v0.7.1](https://github.com/Lily-VWV/Floe/releases/tag/v0.7.1), extract one of the following ZIPs, and run `TimeOnScreen.exe` from the extracted folder:
+
+| Download | Requirement |
+| --- | --- |
+| [Floe-v0.7.1-win-x64.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64.zip) | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0); keep all extracted files together |
+| [Floe-v0.7.1-win-x64-standalone.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64-standalone.zip) | Includes the runtime; no separate .NET installation required |
+
+Both ZIPs include English and Chinese usage guides, the MIT license, and notices for included .NET components. `SHA256SUMS.txt` on the release page lists the download checksums. The automatic **Source code** downloads are for building the application, rather than running it directly.
+
+To build from source, follow the instructions below. Local outputs are:
 
 | Version | Executable | Requirement |
 | --- | --- | --- |
 | Framework-dependent | `artifacts/app/TimeOnScreen.exe` | .NET 10 Desktop Runtime; keep all files in the folder together |
 | Self-contained | `artifacts/standalone/TimeOnScreen.exe` | Includes the runtime; the executable can be copied on its own |
 
-The self-contained executable is larger and extracts runtime components on first launch. Build outputs contain the application and the two usage guides. Release executables are excluded from source control.
+The self-contained executable is larger and extracts runtime components on first launch. Keep the license and notice files when redistributing either version. Release executables are excluded from source control.
 
 1. Open the executable to show Settings.
 2. Adjust display, reminders, and appearance. **Preview** uses the current form without saving.
@@ -97,3 +106,9 @@ Checks cover scheduling, configuration recovery, language persistence and switch
 - `tests/TimeOnScreen.Tests`: dependency-free logic regression checks.
 
 Window implementation references: [WPF windows](https://learn.microsoft.com/en-us/dotnet/desktop/wpf/windows/) and [layered windows](https://learn.microsoft.com/en-us/windows/win32/winmsg/window-features).
+
+## License
+
+Floe is licensed under the [MIT License](LICENSE). Copyright (c) 2026 Lily Ren.
+
+Included .NET components retain their own licenses and notices in `licenses/`.

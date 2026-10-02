@@ -1,4 +1,4 @@
-param([switch]$SelfContained)
+param([switch]$SelfContained, [string]$PackagesPath = (Join-Path $PSScriptRoot '.nuget\packages'))
 $ErrorActionPreference = 'Stop'
 $taskRoot = $PSScriptRoot
 $env:DOTNET_CLI_HOME = Join-Path $taskRoot '.dotnet-home'
@@ -6,7 +6,7 @@ $env:DOTNET_CLI_TELEMETRY_OPTOUT = '1'
 $env:DOTNET_GENERATE_ASPNET_CERTIFICATE = 'false'
 $env:DOTNET_ADD_GLOBAL_TOOLS_TO_PATH = 'false'
 $config = Join-Path $taskRoot 'NuGet.Config'
-$packages = Join-Path $taskRoot '.nuget\packages'
+$packages = [System.IO.Path]::GetFullPath($PackagesPath)
 $project = Join-Path $taskRoot 'src\TimeOnScreen\TimeOnScreen.csproj'
 dotnet restore $project --configfile $config --packages $packages
 if ($LASTEXITCODE -ne 0) { throw 'Restore failed' }
@@ -24,8 +24,22 @@ if ($SelfContained) {
     dotnet publish $project -c Release --no-restore --self-contained false -o $taskOutput -p:DebugType=None --nologo
 }
 if ($LASTEXITCODE -ne 0) { throw 'Publish failed' }
-foreach ($taskGuide in @('README.md', 'README.zh-CN.md')) {
+foreach ($taskGuide in @('README.md', 'README.zh-CN.md', 'LICENSE', 'licenses')) {
     Copy-Item -LiteralPath (Join-Path $taskRoot $taskGuide) -Destination $taskOutput -Recurse -Force
+}
+if ($SelfContained) {
+    $taskAssets = Get-Content -LiteralPath (Join-Path (Split-Path -Parent $project) 'obj\project.assets.json') -Raw | ConvertFrom-Json
+    $taskRuntimePackages = @($taskAssets.project.frameworks.PSObject.Properties.Value | ForEach-Object { $_.downloadDependencies } | Where-Object { $_.name -in 'Microsoft.NETCore.App.Runtime.win-x64', 'Microsoft.WindowsDesktop.App.Runtime.win-x64' })
+    if ($taskRuntimePackages.Count -ne 2) { throw 'Could not identify both bundled runtime license sources' }
+    foreach ($taskRuntimePackage in $taskRuntimePackages) {
+        $taskRuntimeVersion = ($taskRuntimePackage.version.Trim('[', ']') -split ',')[0].Trim()
+        $taskRuntimeDirectory = Join-Path (Join-Path $packages $taskRuntimePackage.name.ToLowerInvariant()) $taskRuntimeVersion
+        $taskVendorFiles = @(Get-ChildItem -LiteralPath $taskRuntimeDirectory -File | Where-Object { $_.Name -match '^(LICENSE(\..*)?|THIRD-PARTY-NOTICES\.TXT)$' })
+        if (-not ($taskVendorFiles | Where-Object { $_.Name -match '^LICENSE' })) { throw 'Bundled runtime license file was not found' }
+        $taskVendorOutput = Join-Path (Join-Path $taskOutput 'licenses') $taskRuntimePackage.name
+        [void](New-Item -ItemType Directory -Path $taskVendorOutput -Force)
+        foreach ($taskVendorFile in $taskVendorFiles) { Copy-Item -LiteralPath $taskVendorFile.FullName -Destination $taskVendorOutput -Force }
+    }
 }
 foreach ($taskLegacyName in @('使用说明.md', '开发日志.md', 'CHANGELOG.md', 'TimeOnScreen.pdb', 'TimeOnScreen.Core.pdb')) {
     $taskLegacyGuide = Join-Path $taskOutput $taskLegacyName
