@@ -1,0 +1,51 @@
+<UserControl x:Class="TimeOnScreen.ColorPicker"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Width="270" UseLayoutRounding="True">
+    <StackPanel>
+        <Grid x:Name="SaturationValuePanel" Height="164" Focusable="True" Cursor="Cross" FocusVisualStyle="{x:Null}"
+              MouseLeftButtonDown="Palette_MouseDown" MouseMove="Palette_MouseMove" MouseLeftButtonUp="Palette_MouseUp"
+              KeyDown="Palette_KeyDown" SizeChanged="Palette_SizeChanged"
+              ToolTip="{DynamicResource PaletteTip}"
+              AutomationProperties.Name="{DynamicResource PaletteName}">
+            <Border x:Name="HueSurface" Background="Red" CornerRadius="7" />
+            <Rectangle RadiusX="7" RadiusY="7" IsHitTestVisible="False">
+                <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="White" /><GradientStop Color="#00FFFFFF" Offset="1" /></LinearGradientBrush></Rectangle.Fill>
+            </Rectangle>
+            <Rectangle RadiusX="7" RadiusY="7" IsHitTestVisible="False">
+                <Rectangle.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#00000000" /><GradientStop Color="Black" Offset="1" /></LinearGradientBrush></Rectangle.Fill>
+            </Rectangle>
+            <Canvas IsHitTestVisible="False">
+                <Grid x:Name="SelectionMarker" Width="14" Height="14">
+                    <Ellipse Stroke="#AA000000" StrokeThickness="4" /><Ellipse Stroke="White" StrokeThickness="2" />
+                </Grid>
+            </Canvas>
+            <Border x:Name="FocusBorder" CornerRadius="7" BorderThickness="2" IsHitTestVisible="False">
+                <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="Transparent" /><Style.Triggers><DataTrigger Binding="{Binding IsKeyboardFocused, ElementName=SaturationValuePanel}" Value="True"><Setter Property="BorderBrush" Value="{StaticResource Accent}" /></DataTrigger></Style.Triggers></Style></Border.Style>
+            </Border>
+        </Grid>
+        <Slider x:Name="HueSlider" Minimum="0" Maximum="360" SmallChange="1" LargeChange="15" IsMoveToPointEnabled="True"
+                ValueChanged="Hue_Changed" Margin="0,14,0,0" Height="26" AutomationProperties.Name="{DynamicResource Hue}">
+            <Slider.Template>
+                <ControlTemplate TargetType="Slider">
+                    <Grid Background="Transparent">
+                        <Border Height="12" CornerRadius="6" VerticalAlignment="Center" IsHitTestVisible="False">
+                            <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#FF0000" /><GradientStop Color="#FFFF00" Offset="0.166667" />
+                                <GradientStop Color="#00FF00" Offset="0.333333" /><GradientStop Color="#00FFFF" Offset="0.5" />
+                                <GradientStop Color="#0000FF" Offset="0.666667" /><GradientStop Color="#FF00FF" Offset="0.833333" /><GradientStop Color="#FF0000" Offset="1" />
+                            </LinearGradientBrush></Border.Background>
+                        </Border>
+                        <Track x:Name="PART_Track" VerticalAlignment="Center">
+                            <Track.DecreaseRepeatButton><RepeatButton Style="{StaticResource SliderRail}" Background="Transparent" Command="{x:Static Slider.DecreaseLarge}" /></Track.DecreaseRepeatButton>
+                            <Track.Thumb><Thumb Width="12" Height="20"><Thumb.Template><ControlTemplate TargetType="Thumb">
+                                <Border BorderBrush="White" BorderThickness="2" CornerRadius="3" Background="Transparent"><Border.Effect><DropShadowEffect Color="Black" BlurRadius="3" ShadowDepth="0" Opacity="0.5" /></Border.Effect></Border>
+                            </ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                            <Track.IncreaseRepeatButton><RepeatButton Style="{StaticResource SliderRail}" Background="Transparent" Command="{x:Static Slider.IncreaseLarge}" /></Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Slider.Template>
+        </Slider>
+    </StackPanel>
+</UserControl>

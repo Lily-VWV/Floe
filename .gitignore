@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+.build-check/
+.dotnet-home/
+.nuget/
+artifacts/
+# Internal records and generated verification output stay outside the public source tree.
+/CHANGELOG.md
+/开发日志.md
+/docs/
+**/errors.log
+**/test-settings.json
