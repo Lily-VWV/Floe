@@ -114,3 +114,12 @@ Window implementation references: [WPF windows](https://learn.microsoft.com/en-u
 Floe is licensed under the [MIT License](LICENSE). Copyright (c) 2026 Lily Ren.
 
 Included .NET components retain their own licenses and notices in `licenses/`.
+
+## Event reminders and Pomodoro
+
+Two new sections appear below Reminders:
+
+- **Event reminders**: add multiple events, select one to update or delete, then save. Check Daily for recurring reminders; otherwise choose a future date and time for a one-time reminder. At the scheduled time the current clock appears above the event title, both flashing. Simultaneous events appear together. Event reminders are independent of clock reminder hours; paused reminders are skipped.
+- **Pomodoro**: set work and rest to 1–180 minutes and 1–20 rounds (defaults: 25 / 5 minutes, 4 rounds). Save and start. Each work phase ends with a flashing rest notice followed by a steady rest countdown. Rest ends with the next work phase, or completion after the final round. Stop at any time.
+- Closing settings keeps the session running; exiting the application discards progress. Pause, lock and sleep freeze the timer. Changed durations apply to the next session.
+- Both features share appearance, position and reminder duration. Text alerts still flash softly if clock blinking is disabled. Event alerts restore the rest countdown or persistent clock afterward.

@@ -7,6 +7,7 @@ var tests = new List<(string Name, Action Run)>();
 DateTime At(int hour, int minute, double seconds = 0) => new DateTime(2026, 10, 1, hour, minute, 0).AddSeconds(seconds);
 void Equal<T>(T expected, T actual)
 {
+    if (expected is ClockSettings && actual is ClockSettings) { Equal(System.Text.Json.JsonSerializer.Serialize(expected), System.Text.Json.JsonSerializer.Serialize(actual)); return; }
     if (!EqualityComparer<T>.Default.Equals(expected, actual)) throw new Exception($"Expected {expected}; got {actual}");
 }
 void Assert(bool value) { if (!value) throw new Exception("Assertion failed"); }
@@ -337,6 +338,67 @@ tests.Add(("Persistent display preserves reminder schedules and active hours", (
     Equal<DateTime?>(At(21, 45), engine.Poll(At(21, 45, 1), persistent));
     Equal<DateTime?>(null, engine.Poll(At(22, 45, 1), persistent));
     Equal(At(9, 45).AddDays(1), ScheduleEngine.NextReminder(At(22, 30), persistent));
+}));
+tests.Add(("Event schedule repeats daily outside clock reminder hours without duplicates", () =>
+{
+    var events = (settings with { EventEnabled = true, EventTime = "23:00", ActiveHoursEnabled = true }).EventSchedule();
+    var engine = new ScheduleEngine(At(22, 59), events);
+    Equal<DateTime?>(At(23, 0), engine.Poll(At(23, 0, 0.5), events));
+    Equal<DateTime?>(null, engine.Poll(At(23, 0, 1), events));
+    Equal<DateTime?>(At(23, 0).AddDays(1), engine.Poll(At(23, 0, 1).AddDays(1), events));
+    Assert(!ReminderRules.HasRules(settings.EventSchedule()));
+}));
+tests.Add(("Event pause and late resume skip missed alerts", () =>
+{
+    var events = (settings with { EventEnabled = true, EventTime = "23:00" }).EventSchedule();
+    var engine = new ScheduleEngine(At(22, 59), events);
+    Equal<DateTime?>(null, engine.Poll(At(23, 0), events, true));
+    Equal<DateTime?>(null, engine.Poll(At(23, 0, 2), events));
+    Equal<DateTime?>(null, engine.Poll(At(23, 0, 6).AddDays(1), events));
+}));
+tests.Add(("Pomodoro exact boundaries, countdown rounding and final rest", () =>
+{
+    var timer = new PomodoroTimer();
+    timer.Start(settings with { WorkMinutes = 1, RestMinutes = 1, PomodoroRounds = 2 });
+    timer.Advance(TimeSpan.FromSeconds(59.5));
+    Equal("00:01", timer.Countdown);
+    timer.Advance(TimeSpan.FromSeconds(0.5));
+    Equal(PomodoroPhase.Rest, timer.Phase);
+    Equal("01:00", timer.Countdown);
+    timer.Advance(TimeSpan.FromMinutes(1));
+    Equal(PomodoroPhase.Work, timer.Phase);
+    Equal(2, timer.Round);
+    timer.Advance(TimeSpan.FromMinutes(1));
+    Equal(PomodoroPhase.Rest, timer.Phase);
+    timer.Advance(TimeSpan.FromMinutes(1));
+    Equal(PomodoroPhase.Completed, timer.Phase);
+    Assert(!timer.Running);
+    Equal("00:00", timer.Countdown);
+}));
+tests.Add(("Pomodoro delayed ticks preserve elapsed time and stop resets", () =>
+{
+    var timer = new PomodoroTimer();
+    timer.Start(settings with { WorkMinutes = 1, RestMinutes = 1, PomodoroRounds = 3 });
+    timer.Advance(TimeSpan.FromSeconds(245));
+    Equal(3, timer.Round);
+    Equal(PomodoroPhase.Work, timer.Phase);
+    Equal("00:55", timer.Countdown);
+    timer.Stop();
+    timer.Advance(TimeSpan.FromDays(1));
+    Equal(PomodoroPhase.Idle, timer.Phase);
+    timer.Start(settings);
+    Equal(1, timer.Round);
+    Equal("25:00", timer.Countdown);
+}));
+tests.Add(("New settings survive JSON round trip and invalid values normalize", () =>
+{
+    var configured = settings with { EventEnabled = true, EventTime = "23:00", EventTitle = "睡眠时间", WorkMinutes = 40, RestMinutes = 10, PomodoroRounds = 6 };
+    Equal(configured, System.Text.Json.JsonSerializer.Deserialize<ClockSettings>(System.Text.Json.JsonSerializer.Serialize(configured)));
+    var invalid = (settings with { EventTime = "25:00", EventTitle = null!, WorkMinutes = 0, RestMinutes = 999, PomodoroRounds = -1 }).Normalize();
+    Equal("23:00", invalid.EventTime);
+    Equal(1, invalid.WorkMinutes);
+    Equal(180, invalid.RestMinutes);
+    Equal(1, invalid.PomodoroRounds);
 }));
 var failed = 0;
 foreach (var test in tests)

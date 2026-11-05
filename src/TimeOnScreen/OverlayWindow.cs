@@ -21,6 +21,9 @@ internal sealed class OverlayWindow : Window
     private readonly Func<DateTime> _now;
     private ClockSettings? _activeSettings;
     private ClockSettings? _persistentSettings;
+    private Func<string>? _textProvider;
+    private Func<string>? _persistentText;
+    private string? _persistentMeasure;
     private bool _isReminding;
     private int _generation;
     internal IntPtr Handle => new WindowInteropHelper(this).Handle;
@@ -61,23 +64,34 @@ internal sealed class OverlayWindow : Window
 
     internal void Play(ClockSettings settings) => Display(settings, reminding: true);
 
-    internal void SetPersistent(ClockSettings? settings)
+    internal void PlayEvent(ClockSettings settings, string title) =>
+        Display(settings with { BlinkStyle = settings.BlinkStyle == BlinkStyle.Steady ? BlinkStyle.Smooth : settings.BlinkStyle }, true,
+            () => settings.FormatTime(_now()) + "\n" + title,
+            (settings.ShowSeconds ? "88:88:88" : "88:88") + (settings.Use24HourClock ? "" : " AM") + "\n" + title);
+
+    internal void PlayText(ClockSettings settings, string text) =>
+        Display(settings with { BlinkStyle = settings.BlinkStyle == BlinkStyle.Steady ? BlinkStyle.Smooth : settings.BlinkStyle }, true, () => text, text);
+
+    internal void SetPersistent(ClockSettings? settings, Func<string>? text = null, string? measure = null)
     {
         _persistentSettings = settings;
+        _persistentText = text;
+        _persistentMeasure = measure;
         if (settings is null) Dismiss();
-        else Display(settings, reminding: false);
+        else Display(settings, reminding: false, text, measure);
     }
 
     private void FinishReminder()
     {
-        if (_persistentSettings is { } baseline) Display(baseline, reminding: false);
+        if (_persistentSettings is { } baseline) Display(baseline, reminding: false, _persistentText, _persistentMeasure);
         else Dismiss();
     }
 
-    private void Display(ClockSettings settings, bool reminding)
+    private void Display(ClockSettings settings, bool reminding, Func<string>? text = null, string? measure = null)
     {
         Dismiss();
         _isReminding = reminding;
+        _textProvider = text;
         var generation = _generation;
         var screen = SelectScreen(settings.Monitor);
         var area = screen.WorkingArea;
@@ -87,7 +101,7 @@ internal sealed class OverlayWindow : Window
         var dpi = Math.Max(96u, NativeMethods.GetDpiForWindow(hwnd)) / 96.0;
         // Reserve the full digit width before showing, so changing seconds never
         // moves the overlay or clips a wider digit at a minute/hour rollover.
-        _digits.Text = (settings.ShowSeconds ? "88:88:88" : "88:88") + (settings.Use24HourClock ? "" : " AM");
+        _digits.Text = measure ?? (settings.ShowSeconds ? "88:88:88" : "88:88") + (settings.Use24HourClock ? "" : " AM");
         _digits.FontFamily = new FontFamily(settings.FontFamily);
         _digits.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(settings.Color));
         _digits.Effect = settings.Shadow ? new DropShadowEffect { Color = Colors.Black, BlurRadius = 9, ShadowDepth = 2, Opacity = 0.65 } : null;
@@ -155,7 +169,7 @@ internal sealed class OverlayWindow : Window
     {
         if (_activeSettings is not { } settings) return;
         var now = _now();
-        var text = settings.FormatTime(now);
+        var text = _textProvider?.Invoke() ?? settings.FormatTime(now);
         if (_digits.Text != text) _digits.Text = text;
         if (_isReminding && settings.SyncBlinkToSeconds)
             _content.Opacity = SecondBlink.Opacity(now, settings.Opacity, settings.BlinkStyle);

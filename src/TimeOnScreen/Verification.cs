@@ -127,6 +127,9 @@ internal static class Verification
             var pickerButton = (Button)settingsWindow.FindName("ColorPickerButton");
             pickerButton.BringIntoView();
             await Task.Delay(100);
+            var appearanceScroll = (ScrollViewer)settingsWindow.FindName("SettingsScroll");
+            appearanceScroll.ScrollToVerticalOffset(appearanceScroll.VerticalOffset + pickerButton.TransformToAncestor(appearanceScroll).Transform(new Point()).Y - 60);
+            await Task.Delay(100);
             pickerButton.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(100);
             var colorPopup = (Popup)settingsWindow.FindName("ColorPopup");
@@ -192,7 +195,7 @@ internal static class Verification
             var save = (Button)settingsWindow.FindName("SaveButton");
             save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check("Save button applies and persists settings", app.Settings.DurationSeconds == 3 && app.Settings.Color == "#A7F3D0" &&
-                new SettingsStore(Path.Combine(directory, "test-settings.json")).Load() == app.Settings);
+                JsonSerializer.Serialize(new SettingsStore(Path.Combine(directory, "test-settings.json")).Load()) == JsonSerializer.Serialize(app.Settings));
             ((TextBox)settingsWindow.FindName("DurationBox")).Text = "-1";
             save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check("Invalid input does not overwrite saved settings", app.Settings.DurationSeconds == 3 &&
@@ -208,7 +211,7 @@ internal static class Verification
             var customSettings = app.Settings;
             Check("Custom daily and hourly rules save from settings UI", customSettings.IntervalMinutes == 0 &&
                 customSettings.DailyReminderTimes == "01:29, 13:29" && customSettings.HourlyReminderMinutes == "45" &&
-                new SettingsStore(Path.Combine(directory, "test-settings.json")).Load() == customSettings);
+                JsonSerializer.Serialize(new SettingsStore(Path.Combine(directory, "test-settings.json")).Load()) == JsonSerializer.Serialize(customSettings));
             Check("Saved custom inputs are normalized", daily.Text == "01:29, 13:29" && hourly.Text == "45");
             var rulesPanel = (FrameworkElement)settingsWindow.FindName("CustomRulesPanel");
             rulesPanel.BringIntoView();
@@ -365,7 +368,7 @@ internal static class Verification
             save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             await Task.Delay(100);
             Check("Settings allow and persist clock-only mode", app.Settings.KeepVisible && !ReminderRules.HasRules(app.Settings) &&
-                new SettingsStore(Path.Combine(directory, "test-settings.json")).Load() == app.Settings && overlay.IsVisible && !overlay.IsReminding);
+                JsonSerializer.Serialize(new SettingsStore(Path.Combine(directory, "test-settings.json")).Load()) == JsonSerializer.Serialize(app.Settings) && overlay.IsVisible && !overlay.IsReminding);
             Check("Clock-only status clearly explains no reminders", ((TextBlock)settingsWindow.FindName("NextText")).Text == "Clock only");
             keepVisible.BringIntoView();
             await Task.Delay(100);
@@ -403,6 +406,37 @@ internal static class Verification
             save.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
             Check("Disabling persistence hides clock and preserves reminders", !app.Settings.KeepVisible && !overlay.IsVisible &&
                 app.Settings.HourlyReminderMinutes == "45" && !new SettingsStore(Path.Combine(directory, "test-settings.json")).Load().KeepVisible);
+            app.SaveSettings(app.Settings with { DurationSeconds = 1, WorkMinutes = 1, RestMinutes = 1, PomodoroRounds = 2 });
+            app.StartPomodoro();
+            app.Pomodoro.Advance(TimeSpan.FromSeconds(59.99));
+            await Task.Delay(30);
+            app.ProcessScheduledReminders(DateTime.Now);
+            Check("Pomodoro work boundary flashes rest text", app.Pomodoro.Phase == PomodoroPhase.Rest && overlay.IsReminding && overlay.DigitText == UiText.Get("RestNow"));
+            await Task.Delay(1200);
+            app.ProcessScheduledReminders(DateTime.Now);
+            await Task.Delay(1000);
+            Check("Rest flash restores persistent countdown without clock persistence", overlay.IsVisible && !overlay.IsReminding && overlay.DigitText.Contains("00:", StringComparison.Ordinal));
+            Capture(overlay, Path.Combine(directory, "rest-countdown.png"));
+            overlay.PlayEvent(app.Settings, "睡眠时间");
+            Check("Event overlay displays title", overlay.DigitText.EndsWith("\n睡眠时间", StringComparison.Ordinal) && overlay.DigitText.Contains(":", StringComparison.Ordinal) && overlay.IsReminding);
+            await Task.Delay(1200);
+            Check("Event returns to rest countdown", overlay.IsVisible && !overlay.IsReminding && overlay.DigitText.StartsWith(UiText.Get("RestNow"), StringComparison.Ordinal));
+            app.TogglePause();
+            var frozen = app.Pomodoro.Remaining;
+            await Task.Delay(100);
+            app.ProcessScheduledReminders(DateTime.Now);
+            Check("Pausing freezes Pomodoro", app.Pomodoro.Remaining == frozen);
+            app.TogglePause();
+            app.StopPomodoro();
+            Check("Stopping Pomodoro clears countdown", !app.Pomodoro.Running && !overlay.IsVisible);
+            var eventAt = DateTime.Now.AddMinutes(1);
+            app.SaveSettings(app.Settings with { Events = new[] { new EventReminder { Title = "单次事件", Daily = false, Date = eventAt.Date, Time = eventAt.ToString("HH:mm") } } });
+            app.ProcessScheduledReminders(new DateTime(eventAt.Year, eventAt.Month, eventAt.Day, eventAt.Hour, eventAt.Minute, 1));
+            Check("One-time event displays clock above title", overlay.IsReminding && overlay.DigitText.EndsWith("\n单次事件", StringComparison.Ordinal));
+            await Task.Delay(1200);
+            app.ProcessScheduledReminders(new DateTime(eventAt.Year, eventAt.Month, eventAt.Day, eventAt.Hour, eventAt.Minute, 2).AddDays(1));
+            Check("One-time event does not repeat tomorrow", !overlay.IsVisible);
+
         }
         catch (Exception ex)
         {

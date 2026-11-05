@@ -20,6 +20,34 @@ public partial class App : Application
     private Forms.ToolStripMenuItem? _pauseItem;
     private DispatcherTimer? _timer;
     private ScheduleEngine? _schedule;
+    private ScheduleEngine? _eventSchedule;
+    private DateTime _lastEventPoll = DateTime.Now;
+    private readonly System.Collections.Generic.HashSet<string> _firedEvents = new();
+    internal PomodoroTimer Pomodoro { get; } = new();
+    private long _lastPomodoroTick = Environment.TickCount64;
+    private bool Suppressed => IsPaused || _locked || _suspended;
+
+    internal void StartPomodoro()
+    {
+        Pomodoro.Start(Settings);
+        _lastPomodoroTick = Environment.TickCount64;
+        RefreshPersistentDisplay();
+        _settingsWindow?.UpdateStatus();
+    }
+
+    internal void StopPomodoro()
+    {
+        Pomodoro.Stop();
+        RefreshPersistentDisplay();
+        _settingsWindow?.UpdateStatus();
+    }
+
+    private void AdvancePomodoro()
+    {
+        var now = Environment.TickCount64;
+        if (!Suppressed) Pomodoro.Advance(TimeSpan.FromMilliseconds(Math.Max(0, now - _lastPomodoroTick)));
+        _lastPomodoroTick = now;
+    }
     private SettingsStore? _store;
     private OverlayWindow? _overlay;
     private SettingsWindow? _settingsWindow;
@@ -57,7 +85,8 @@ public partial class App : Application
             _verifying = true;
             _store = new SettingsStore(Path.Combine(directory, "test-settings.json"));
             _schedule = new ScheduleEngine(DateTime.Now, Settings);
-            _overlay = new OverlayWindow();
+            _eventSchedule = new ScheduleEngine(DateTime.Now, Settings.EventSchedule());
+        _overlay = new OverlayWindow();
             InitializeTray();
             OpenSettings();
             _ = Verification.RunAsync(this, directory);
@@ -79,6 +108,7 @@ public partial class App : Application
         try { Settings = Settings with { StartWithWindows = StartupRegistration.IsEnabled() }; }
         catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException) { InitialWarning = UiText.Get("StartupReadError"); }
         _schedule = new ScheduleEngine(DateTime.Now, Settings);
+        _eventSchedule = new ScheduleEngine(DateTime.Now, Settings.EventSchedule());
         _overlay = new OverlayWindow();
         InitializeMessageWindow();
         InitializeTray();
@@ -147,6 +177,7 @@ public partial class App : Application
     internal void Preview(ClockSettings settings) => _overlay?.Play(settings.Normalize());
     internal void TogglePause()
     {
+        AdvancePomodoro();
         IsPaused = !IsPaused;
         RefreshPersistentDisplay();
         _schedule?.Recalculate(DateTime.Now, Settings);
@@ -166,6 +197,8 @@ public partial class App : Application
             throw;
         }
         Settings = settings.Normalize();
+        _lastEventPoll = DateTime.Now;
+        _eventSchedule?.Recalculate(DateTime.Now, Settings.EventSchedule());
         SetUiLanguage(Settings.Language);
         _schedule?.Recalculate(DateTime.Now, Settings);
         RefreshPersistentDisplay();
@@ -195,15 +228,46 @@ public partial class App : Application
 
     internal void ProcessScheduledReminders(DateTime now)
     {
-        var due = _schedule?.Poll(now, Settings, IsPaused || _locked || _suspended);
-        if (due is not null) _overlay?.Play(Settings);
+        var oldPhase = Pomodoro.Phase;
+        var oldRound = Pomodoro.Round;
+        AdvancePomodoro();
+        var changed = oldPhase != Pomodoro.Phase || oldRound != Pomodoro.Round;
+        if (changed) RefreshPersistentDisplay();
+        var due = _schedule?.Poll(now, Settings, Suppressed);
+        if (due is not null && Pomodoro.Phase != PomodoroPhase.Rest) _overlay?.Play(Settings);
+        if (changed && !Suppressed)
+        {
+            var key = Pomodoro.Phase == PomodoroPhase.Rest ? "RestNow" : Pomodoro.Phase == PomodoroPhase.Work ? "WorkNow" : "PomodoroDone";
+            _overlay?.PlayText(Settings, UiText.Get(key));
+        }
+        var titles = new System.Collections.Generic.List<string>();
+        foreach (var item in Settings.Events ?? Array.Empty<EventReminder>())
+        {
+            if (!ClockSettings.TryTime(item.Time, out var time) || string.IsNullOrWhiteSpace(item.Title)) continue;
+            var dueTime = (item.Daily ? now.Date : item.Date.Date).Add(time.ToTimeSpan());
+            var key = item.Id + ":" + dueTime.ToString("O");
+            if (dueTime <= _lastEventPoll || dueTime > now || !_firedEvents.Add(key)) continue;
+            if (Suppressed || now - dueTime > ScheduleEngine.Grace) continue;
+            titles.Add(item.Title);
+        }
+        _lastEventPoll = now;
+        var eventDue = _eventSchedule?.Poll(now, Settings.EventSchedule(), Suppressed);
+        if (eventDue is not null) titles.Add(Settings.EventTitle);
+        if (titles.Count > 0) _overlay?.PlayEvent(Settings, string.Join("\n", titles));
         _settingsWindow?.UpdateStatus();
     }
-    private void RefreshPersistentDisplay() =>
-        _overlay?.SetPersistent(Settings.KeepVisible && !_locked && !_suspended ? Settings : null);
+    private void RefreshPersistentDisplay()
+    {
+        if (_locked || _suspended) { _overlay?.SetPersistent(null); return; }
+        if (Pomodoro.Phase == PomodoroPhase.Rest && !IsPaused)
+            _overlay?.SetPersistent(Settings, () => UiText.Get("RestNow") + "\n" + Pomodoro.Countdown,
+                UiText.Get("RestNow") + "\n888:88");
+        else _overlay?.SetPersistent(Settings.KeepVisible ? Settings : null);
+    }
 
     internal void SetSessionLocked(bool locked)
     {
+        AdvancePomodoro();
         _locked = locked;
         if (!locked) _schedule?.Recalculate(DateTime.Now, Settings);
         RefreshPersistentDisplay();
@@ -211,12 +275,13 @@ public partial class App : Application
 
     internal void SetSuspended(bool suspended)
     {
+        AdvancePomodoro();
         _suspended = suspended;
         RefreshPersistentDisplay();
     }
 
     private void TimeChanged(object? sender, EventArgs e) => OnUi(() =>
-    { _schedule?.Recalculate(DateTime.Now, Settings); RefreshPersistentDisplay(); });
+    { _schedule?.Recalculate(DateTime.Now, Settings); _eventSchedule?.Recalculate(DateTime.Now, Settings.EventSchedule()); RefreshPersistentDisplay(); });
     private void PowerModeChanged(object sender, PowerModeChangedEventArgs e)
     {
         if (e.Mode == PowerModes.Suspend) OnUi(() => SetSuspended(true));

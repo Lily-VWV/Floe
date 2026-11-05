@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
@@ -18,6 +19,41 @@ public partial class SettingsWindow : Window
     private readonly App _app;
     private readonly DispatcherTimer _messageTimer = new() { Interval = TimeSpan.FromSeconds(2.5) };
     private bool _loaded;
+    private readonly List<EventReminder> _events = new();
+    private void RefreshEvents()
+    {
+        EventsList.ItemsSource = _events.Select(e => new Choice<EventReminder>($"{(e.Daily ? UiText.Get("DailyEvent") : e.Date.ToString("yyyy-MM-dd"))} {e.Time}  {e.Title}", e)).ToArray();
+    }
+    private void EventSelected(object sender, SelectionChangedEventArgs e)
+    {
+        if (EventsList.SelectedItem is not Choice<EventReminder> choice) return;
+        EventTimeBox.Text = choice.Value.Time; EventTitleBox.Text = choice.Value.Title;
+        EventDailyBox.IsChecked = choice.Value.Daily; EventDateBox.SelectedDate = choice.Value.Date;
+    }
+    private EventReminder ReadEvent(string? id = null)
+    {
+        if (!ClockSettings.TryTime(EventTimeBox.Text.Trim(), out var time)) throw new ArgumentException(UiText.Get("InvalidEventTime"));
+        if (string.IsNullOrWhiteSpace(EventTitleBox.Text)) throw new ArgumentException(UiText.Get("MissingEventTitle"));
+        var date = EventDateBox.SelectedDate ?? DateTime.Today;
+        if (EventDailyBox.IsChecked != true && date.Date.Add(time.ToTimeSpan()) <= DateTime.Now)
+            throw new ArgumentException(UiText.Get("FutureEvent"));
+        return new EventReminder { Id = id ?? Guid.NewGuid().ToString(), Time = EventTimeBox.Text.Trim(), Title = EventTitleBox.Text.Trim(), Daily = EventDailyBox.IsChecked == true, Date = date };
+    }
+    private void AddEvent_Click(object sender, RoutedEventArgs e)
+    {
+        try { _events.Add(ReadEvent()); RefreshEvents(); }
+        catch (ArgumentException ex) { ShowMessage(ex.Message); }
+    }
+    private void EditEvent_Click(object sender, RoutedEventArgs e)
+    {
+        if (EventsList.SelectedItem is not Choice<EventReminder> choice) return;
+        try { _events[_events.IndexOf(choice.Value)] = ReadEvent(choice.Value.Id); RefreshEvents(); }
+        catch (ArgumentException ex) { ShowMessage(ex.Message); }
+    }
+    private void DeleteEvent_Click(object sender, RoutedEventArgs e)
+    {
+        if (EventsList.SelectedItem is Choice<EventReminder> choice) { _events.Remove(choice.Value); RefreshEvents(); }
+    }
 
     internal SettingsWindow(App app)
     {
@@ -69,6 +105,7 @@ public partial class SettingsWindow : Window
     internal void RefreshLanguage()
     {
         RefreshChoiceLabels();
+        RefreshEvents();
         _messageTimer.Stop();
         MessageText.Visibility = Visibility.Collapsed;
         UpdateStatus();
@@ -87,6 +124,16 @@ public partial class SettingsWindow : Window
 
     private void LoadValues(ClockSettings settings)
     {
+        _events.Clear();
+        _events.AddRange(settings.Events ?? Array.Empty<EventReminder>());
+        if (settings.EventEnabled) _events.Add(new EventReminder { Title = settings.EventTitle, Time = settings.EventTime });
+        RefreshEvents();
+        EventDateBox.SelectedDate = DateTime.Today;
+        EventTimeBox.Text = settings.EventTime;
+        EventTitleBox.Text = settings.EventTitle;
+        WorkMinutesBox.Text = settings.WorkMinutes.ToString(CultureInfo.InvariantCulture);
+        RestMinutesBox.Text = settings.RestMinutes.ToString(CultureInfo.InvariantCulture);
+        RoundsBox.Text = settings.PomodoroRounds.ToString(CultureInfo.InvariantCulture);
         IntervalBox.SelectedValue = settings.IntervalMinutes;
         DailyTimesBox.Text = settings.DailyReminderTimes;
         HourlyMinutesBox.Text = settings.HourlyReminderMinutes;
@@ -127,8 +174,15 @@ public partial class SettingsWindow : Window
         if (!ClockSettings.TryTime(start, out _) || !ClockSettings.TryTime(end, out _))
             throw new ArgumentException(UiText.Get("InvalidHours"));
         if (ActiveHoursBox.IsChecked == true && start == end) throw new ArgumentException(UiText.Get("EqualHours"));
+        var work = ReadNumber(WorkMinutesBox, UiText.Get("WorkMinutes"), 1, 180);
+        var rest = ReadNumber(RestMinutesBox, UiText.Get("RestMinutes"), 1, 180);
+        var rounds = ReadNumber(RoundsBox, UiText.Get("Rounds"), 1, 20);
+        if (work != Math.Truncate(work) || rest != Math.Truncate(rest) || rounds != Math.Truncate(rounds))
+            throw new ArgumentException(UiText.Get("PomodoroIntegers"));
         var settings = _app.Settings with
         {
+            EventEnabled = false, Events = _events.ToArray(),
+            WorkMinutes = (int)work, RestMinutes = (int)rest, PomodoroRounds = (int)rounds,
             Language = UiText.Language,
             IntervalMinutes = (int)(IntervalBox.SelectedValue ?? 60), Use24HourClock = (bool)(FormatBox.SelectedValue ?? true),
             DailyReminderTimes = ReminderRules.NormalizeDailyTimes(DailyTimesBox.Text, language: UiText.Language),
@@ -142,7 +196,7 @@ public partial class SettingsWindow : Window
             ActiveHoursEnabled = ActiveHoursBox.IsChecked == true, ActiveStart = start, ActiveEnd = end,
             StartWithWindows = StartupBox.IsChecked == true
         };
-        if (!settings.KeepVisible || ReminderRules.HasRules(settings)) _ = ScheduleEngine.NextReminder(DateTime.Now, settings);
+        if (ReminderRules.HasRules(settings)) _ = ScheduleEngine.NextReminder(DateTime.Now, settings);
         return settings;
     }
 
@@ -174,6 +228,15 @@ public partial class SettingsWindow : Window
         catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.IO.IOException or UnauthorizedAccessException or System.Security.SecurityException)
         { ShowMessage(UiText.Get("SaveFailed") + ex.Message); }
     }
+
+    private void StartPomodoro_Click(object sender, RoutedEventArgs e)
+    {
+        try { _app.SaveSettings(ReadValues()); _app.StartPomodoro(); }
+        catch (Exception ex) when (ex is ArgumentException or InvalidOperationException or System.IO.IOException or UnauthorizedAccessException or System.Security.SecurityException)
+        { ShowMessage(UiText.Get("SaveFailed") + ex.Message); }
+    }
+
+    private void StopPomodoro_Click(object sender, RoutedEventArgs e) => _app.StopPomodoro();
 
     private void Pause_Click(object sender, RoutedEventArgs e) => _app.TogglePause();
     private void ColorPicker_Click(object sender, RoutedEventArgs e)
@@ -216,6 +279,12 @@ public partial class SettingsWindow : Window
 
     internal void UpdateStatus()
     {
+        var timer = _app.Pomodoro;
+        StartPomodoroButton.IsEnabled = !timer.Running;
+        StopPomodoroButton.IsEnabled = timer.Running;
+        PomodoroStatus.Text = timer.Running
+            ? UiText.Format("PomodoroStatus", timer.Round, timer.Rounds, UiText.Get(timer.Phase == PomodoroPhase.Work ? "WorkNow" : "RestNow"), timer.Countdown) + (_app.IsPaused ? " · " + UiText.Get("Paused") : "")
+            : UiText.Get(timer.Phase == PomodoroPhase.Completed ? "PomodoroDone" : "PomodoroIdle");
         StatusText.Text = _app.IsPaused ? UiText.Get("Paused") : _app.Settings.KeepVisible ? UiText.Get("AlwaysVisible") : UiText.Get("Enabled");
         PauseButton.Content = _app.IsPaused ? UiText.Get("Resume") : UiText.Get("Pause");
         if (_app.IsPaused) NextText.Text = _app.Settings.KeepVisible ? UiText.Get("ClockContinues") : "";

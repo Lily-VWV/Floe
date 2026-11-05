@@ -64,6 +64,44 @@
                 </Border>
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
+                        <TextBlock Text="{DynamicResource EventReminder}" Style="{StaticResource SectionTitle}" />
+                        <ListBox x:Name="EventsList" Height="120" DisplayMemberPath="Label" SelectionChanged="EventSelected" Margin="0,0,0,12" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="130" /><ColumnDefinition Width="12" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="{DynamicResource EventTime}" /><TextBox x:Name="EventTimeBox" /></StackPanel>
+                            <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource EventTitle}" /><TextBox x:Name="EventTitleBox" MaxLength="80" /></StackPanel>
+                        </Grid>
+                        <StackPanel Orientation="Horizontal" Margin="0,12,0,12">
+                            <CheckBox x:Name="EventDailyBox" Content="{DynamicResource DailyEvent}" IsChecked="True" VerticalAlignment="Center" />
+                            <DatePicker x:Name="EventDateBox" Width="150" Margin="18,0,0,0" ToolTip="{DynamicResource OnceDate}" />
+                        </StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <Button Content="{DynamicResource AddEvent}" Click="AddEvent_Click" />
+                            <Button Content="{DynamicResource EditEvent}" Click="EditEvent_Click" Margin="8,0" />
+                            <Button Content="{DynamicResource DeleteEvent}" Click="DeleteEvent_Click" />
+                        </StackPanel>
+                        <TextBlock Text="{DynamicResource EventHint}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Text="{DynamicResource Pomodoro}" Style="{StaticResource SectionTitle}" />
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="20" /><ColumnDefinition /><ColumnDefinition Width="20" /><ColumnDefinition /></Grid.ColumnDefinitions>
+                            <StackPanel><TextBlock Text="{DynamicResource WorkMinutes}" Style="{StaticResource Label}" /><TextBox x:Name="WorkMinutesBox" AutomationProperties.Name="{DynamicResource WorkMinutes}" /></StackPanel>
+                            <StackPanel Grid.Column="2"><TextBlock Text="{DynamicResource RestMinutes}" Style="{StaticResource Label}" /><TextBox x:Name="RestMinutesBox" AutomationProperties.Name="{DynamicResource RestMinutes}" /></StackPanel>
+                            <StackPanel Grid.Column="4"><TextBlock Text="{DynamicResource Rounds}" Style="{StaticResource Label}" /><TextBox x:Name="RoundsBox" AutomationProperties.Name="{DynamicResource Rounds}" /></StackPanel>
+                        </Grid>
+                        <TextBlock Text="{DynamicResource PomodoroHint}" TextWrapping="Wrap" Foreground="{StaticResource Muted}" Margin="0,12,0,12" />
+                        <StackPanel Orientation="Horizontal">
+                            <Button x:Name="StartPomodoroButton" Content="{DynamicResource StartPomodoro}" Click="StartPomodoro_Click" />
+                            <Button x:Name="StopPomodoroButton" Content="{DynamicResource StopPomodoro}" Click="StopPomodoro_Click" Margin="10,0,0,0" />
+                        </StackPanel>
+                        <TextBlock x:Name="PomodoroStatus" TextWrapping="Wrap" Margin="0,12,0,0" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
                         <TextBlock Text="{DynamicResource Appearance}" Style="{StaticResource SectionTitle}" />
                         <Grid>
                             <Grid.ColumnDefinitions><ColumnDefinition /><ColumnDefinition Width="20" /><ColumnDefinition /></Grid.ColumnDefinitions>

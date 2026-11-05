@@ -14,6 +14,18 @@ public sealed record ClockSettings
     public int IntervalMinutes { get; init; } = 60;
     public string DailyReminderTimes { get; init; } = "";
     public string HourlyReminderMinutes { get; init; } = "";
+    public EventReminder[] Events { get; init; } = Array.Empty<EventReminder>();
+    public bool EventEnabled { get; init; }
+    public string EventTime { get; init; } = "23:00";
+    public string EventTitle { get; init; } = "睡眠时间";
+    public int WorkMinutes { get; init; } = 25;
+    public int RestMinutes { get; init; } = 5;
+    public int PomodoroRounds { get; init; } = 4;
+    public ClockSettings EventSchedule() => this with
+    {
+        IntervalMinutes = 0, DailyReminderTimes = EventEnabled ? EventTime : "",
+        HourlyReminderMinutes = "", ActiveHoursEnabled = false
+    };
     public bool Use24HourClock { get; init; } = true;
     public bool ShowSeconds { get; init; } = true;
     public bool KeepVisible { get; init; }
@@ -38,6 +50,11 @@ public sealed record ClockSettings
     public ClockSettings Normalize() => this with
     {
         Version = 1,
+        EventTime = TryTime(EventTime, out _) ? EventTime : "23:00",
+        EventTitle = string.IsNullOrWhiteSpace(EventTitle) ? "睡眠时间" : EventTitle.Trim()[..Math.Min(EventTitle.Trim().Length, 80)],
+        WorkMinutes = Math.Clamp(WorkMinutes, 1, 180),
+        RestMinutes = Math.Clamp(RestMinutes, 1, 180),
+        PomodoroRounds = Math.Clamp(PomodoroRounds, 1, 20),
         Language = Enum.IsDefined(Language) ? Language : AppLanguage.Chinese,
         IntervalMinutes = IntervalMinutes is 0 or 30 or 60 ? IntervalMinutes : 60,
         DailyReminderTimes = ReminderRules.NormalizeDailyTimes(DailyReminderTimes, strict: false),
