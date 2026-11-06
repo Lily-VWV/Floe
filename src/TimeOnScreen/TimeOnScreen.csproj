@@ -7,7 +7,7 @@
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets/clock.ico</ApplicationIcon>
     <AssemblyName>TimeOnScreen</AssemblyName>
-    <Version>0.7.1</Version>
+    <Version>0.8.0</Version>
     <AssemblyTitle>Floe</AssemblyTitle>
     <Product>Floe</Product>
     <Copyright>Copyright (c) 2026 Lily Ren</Copyright>

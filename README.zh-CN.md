@@ -8,12 +8,12 @@ Windows 桌面托盘工具。在指定时刻显示半透明数字，也可让时
 
 ## 使用
 
-要求 Windows x64。在 [v0.7.1 发布页](https://github.com/Lily-VWV/Floe/releases/tag/v0.7.1) 下载以下任一 ZIP，解压后运行文件夹中的 `TimeOnScreen.exe`：
+要求 Windows x64。在 [v0.8.0 发布页](https://github.com/Lily-VWV/Floe/releases/tag/v0.8.0) 下载以下任一 ZIP，解压后运行文件夹中的 `TimeOnScreen.exe`：
 
 | 下载 | 运行要求 |
 | --- | --- |
-| [普通版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64.zip) | 需要 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)，保留全部解压文件 |
-| [自带运行环境版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64-standalone.zip) | 无需另外安装 .NET，解压即用 |
+| [普通版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.8.0/Floe-v0.8.0-win-x64.zip) | 需要 [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0)，保留全部解压文件 |
+| [自带运行环境版压缩包](https://github.com/Lily-VWV/Floe/releases/download/v0.8.0/Floe-v0.8.0-win-x64-standalone.zip) | 无需另外安装 .NET，解压即用 |
 
 两个包均附中英文说明、MIT 许可证及所包含 .NET 组件的许可声明。发布页的 `SHA256SUMS.txt` 提供校验值。自动生成的 **Source code** 下载项是源码，须编译后才能运行。
 

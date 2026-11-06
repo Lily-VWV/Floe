@@ -18,12 +18,12 @@ Simplified Chinese is the default language. English is available from the langua
 
 ## Run
 
-Requires Windows x64. Download [Floe v0.7.1](https://github.com/Lily-VWV/Floe/releases/tag/v0.7.1), extract one of the following ZIPs, and run `TimeOnScreen.exe` from the extracted folder:
+Requires Windows x64. Download [Floe v0.8.0](https://github.com/Lily-VWV/Floe/releases/tag/v0.8.0), extract one of the following ZIPs, and run `TimeOnScreen.exe` from the extracted folder:
 
 | Download | Requirement |
 | --- | --- |
-| [Floe-v0.7.1-win-x64.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64.zip) | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0); keep all extracted files together |
-| [Floe-v0.7.1-win-x64-standalone.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.7.1/Floe-v0.7.1-win-x64-standalone.zip) | Includes the runtime; no separate .NET installation required |
+| [Floe-v0.8.0-win-x64.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.8.0/Floe-v0.8.0-win-x64.zip) | [.NET 10 Desktop Runtime](https://dotnet.microsoft.com/en-us/download/dotnet/10.0); keep all extracted files together |
+| [Floe-v0.8.0-win-x64-standalone.zip](https://github.com/Lily-VWV/Floe/releases/download/v0.8.0/Floe-v0.8.0-win-x64-standalone.zip) | Includes the runtime; no separate .NET installation required |
 
 Both ZIPs include English and Chinese usage guides, the MIT license, and notices for included .NET components. `SHA256SUMS.txt` on the release page lists the download checksums. The automatic **Source code** downloads are for building the application, rather than running it directly.
 
